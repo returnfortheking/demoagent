@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+.env
+*.env.local
+
+# Vector DB / Knowledge Base
+knowledge_base/official/*.chroma/
+knowledge_base/custom/*.chroma/
+chroma_db/
+*.faiss
+*.pkl
+
+# LangSmith / Logs
+*.log
+langsmith_cache/
+
+# VS Code Extension
+extension/node_modules/
+extension/out/
+extension/*.vsix
+extension/.vscode-test/
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+test-results/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Secrets (NEVER commit API keys)
+.env
+*.key
+secrets.json

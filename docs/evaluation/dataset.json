@@ -1,0 +1,163 @@
+{
+  "version": "1.0",
+  "description": "HiSpark AI Agent 评估数据集",
+  "notes": {
+    "operation_qa": "操作类：手工定义，覆盖 hispark-studio 核心命令的自然语言表达",
+    "document_qa": "文档类：由 RAGAS TestsetGenerator 从官方文档自动生成，在 v0.3 首次运行，见 scripts/generate_docqa.py"
+  },
+  "operation_qa": [
+    {
+      "id": "op_001",
+      "input": "帮我编译",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.build",
+      "expected_args": {}
+    },
+    {
+      "id": "op_002",
+      "input": "编译一下项目",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.build",
+      "expected_args": {}
+    },
+    {
+      "id": "op_003",
+      "input": "重新编译",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.rebuild",
+      "expected_args": {}
+    },
+    {
+      "id": "op_004",
+      "input": "全量编译，不用增量",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.rebuild",
+      "expected_args": {}
+    },
+    {
+      "id": "op_005",
+      "input": "清除编译产物",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.clean",
+      "expected_args": {}
+    },
+    {
+      "id": "op_006",
+      "input": "清除一下",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.clean",
+      "expected_args": {}
+    },
+    {
+      "id": "op_007",
+      "input": "停止编译",
+      "expected_type": "action",
+      "expected_command": "stopBuild",
+      "expected_args": {}
+    },
+    {
+      "id": "op_008",
+      "input": "取消当前的编译任务",
+      "expected_type": "action",
+      "expected_command": "stopBuild",
+      "expected_args": {}
+    },
+    {
+      "id": "op_009",
+      "input": "烧录",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.flash",
+      "expected_args": {},
+      "requires_confirmation": true
+    },
+    {
+      "id": "op_010",
+      "input": "帮我把固件烧到板子上",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.flash",
+      "expected_args": {},
+      "requires_confirmation": true
+    },
+    {
+      "id": "op_011",
+      "input": "下载固件到开发板",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.flash",
+      "expected_args": {},
+      "requires_confirmation": true
+    },
+    {
+      "id": "op_012",
+      "input": "只烧某几个分区",
+      "expected_type": "action",
+      "expected_command": "portionOfBurn",
+      "expected_args": {},
+      "requires_confirmation": true
+    },
+    {
+      "id": "op_013",
+      "input": "部分烧录",
+      "expected_type": "action",
+      "expected_command": "portionOfBurn",
+      "expected_args": {},
+      "requires_confirmation": true
+    },
+    {
+      "id": "op_014",
+      "input": "帮我做栈分析",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.stackAnalysis",
+      "expected_args": {}
+    },
+    {
+      "id": "op_015",
+      "input": "分析一下函数调用栈，看看哪里开销最大",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.stackAnalysis",
+      "expected_args": {}
+    },
+    {
+      "id": "op_016",
+      "input": "栈溢出风险分析",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.stackAnalysis",
+      "expected_args": {}
+    },
+    {
+      "id": "op_017",
+      "input": "镜像分析",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.imageAnalysis",
+      "expected_args": {}
+    },
+    {
+      "id": "op_018",
+      "input": "Flash 还剩多少空间",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.imageAnalysis",
+      "expected_args": {}
+    },
+    {
+      "id": "op_019",
+      "input": "看看各内存区域的占用情况",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.imageAnalysis",
+      "expected_args": {}
+    },
+    {
+      "id": "op_020",
+      "input": "帮我查查哪个 .o 文件最大",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.imageAnalysis",
+      "expected_args": {}
+    }
+  ],
+  "document_qa": {
+    "status": "auto-generated",
+    "generator": "RAGAS TestsetGenerator",
+    "source": "HiSpark Studio for VS Code 使用指南.md",
+    "generation_script": "backend/scripts/generate_docqa.py",
+    "first_generated_at": "v0.3",
+    "items": []
+  }
+}

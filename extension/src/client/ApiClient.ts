@@ -1,4 +1,4 @@
-interface ChatResponse {
+export interface ChatResponse {
     type: 'action' | 'answer';
     // action fields
     command?: string;

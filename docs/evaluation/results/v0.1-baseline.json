@@ -1,9 +1,9 @@
 {
   "version": "v0.1",
-  "timestamp": "2026-03-02T13:31:39.917965+00:00",
+  "timestamp": "2026-03-02T13:43:27.741505+00:00",
   "total": 20,
-  "correct": 9,
-  "command_match_rate": 0.45,
+  "correct": 15,
+  "command_match_rate": 0.75,
   "results": [
     {
       "id": "op_001",
@@ -100,100 +100,90 @@
       "input": "下载固件到开发板",
       "expected_type": "action",
       "expected_command": "hispark-studio.flash",
-      "predicted_type": "",
+      "predicted_type": "answer",
       "predicted_command": "",
-      "match": false,
-      "error": "timed out"
+      "match": false
     },
     {
       "id": "op_012",
       "input": "只烧某几个分区",
       "expected_type": "action",
       "expected_command": "portionOfBurn",
-      "predicted_type": "",
-      "predicted_command": "",
-      "match": false,
-      "error": "timed out"
+      "predicted_type": "action",
+      "predicted_command": "portionOfBurn",
+      "match": true
     },
     {
       "id": "op_013",
       "input": "部分烧录",
       "expected_type": "action",
       "expected_command": "portionOfBurn",
-      "predicted_type": "",
-      "predicted_command": "",
-      "match": false,
-      "error": "timed out"
+      "predicted_type": "action",
+      "predicted_command": "portionOfBurn",
+      "match": true
     },
     {
       "id": "op_014",
       "input": "帮我做栈分析",
       "expected_type": "action",
       "expected_command": "hispark-studio.stackAnalysis",
-      "predicted_type": "",
-      "predicted_command": "",
-      "match": false,
-      "error": "timed out"
+      "predicted_type": "action",
+      "predicted_command": "hispark-studio.stackAnalysis",
+      "match": true
     },
     {
       "id": "op_015",
       "input": "分析一下函数调用栈，看看哪里开销最大",
       "expected_type": "action",
       "expected_command": "hispark-studio.stackAnalysis",
-      "predicted_type": "",
-      "predicted_command": "",
-      "match": false,
-      "error": "timed out"
+      "predicted_type": "action",
+      "predicted_command": "hispark-studio.stackAnalysis",
+      "match": true
     },
     {
       "id": "op_016",
       "input": "栈溢出风险分析",
       "expected_type": "action",
       "expected_command": "hispark-studio.stackAnalysis",
-      "predicted_type": "",
-      "predicted_command": "",
-      "match": false,
-      "error": "timed out"
+      "predicted_type": "action",
+      "predicted_command": "hispark-studio.stackAnalysis",
+      "match": true
     },
     {
       "id": "op_017",
       "input": "镜像分析",
       "expected_type": "action",
       "expected_command": "hispark-studio.imageAnalysis",
-      "predicted_type": "",
-      "predicted_command": "",
-      "match": false,
-      "error": "timed out"
+      "predicted_type": "action",
+      "predicted_command": "hispark-studio.imageAnalysis",
+      "match": true
     },
     {
       "id": "op_018",
       "input": "Flash 还剩多少空间",
       "expected_type": "action",
       "expected_command": "hispark-studio.imageAnalysis",
-      "predicted_type": "",
+      "predicted_type": "answer",
       "predicted_command": "",
-      "match": false,
-      "error": "timed out"
+      "match": false
     },
     {
       "id": "op_019",
       "input": "看看各内存区域的占用情况",
       "expected_type": "action",
       "expected_command": "hispark-studio.imageAnalysis",
-      "predicted_type": "",
+      "predicted_type": "answer",
       "predicted_command": "",
-      "match": false,
-      "error": "timed out"
+      "match": false
     },
     {
       "id": "op_020",
       "input": "帮我查查哪个 .o 文件最大",
       "expected_type": "action",
       "expected_command": "hispark-studio.imageAnalysis",
-      "predicted_type": "",
+      "predicted_type": "answer",
       "predicted_command": "",
-      "match": false,
-      "error": "timed out"
+      "match": false
     }
   ]
 }

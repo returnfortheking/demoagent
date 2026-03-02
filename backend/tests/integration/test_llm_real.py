@@ -9,6 +9,7 @@ import os
 import pytest
 
 from src.config import get_llm
+from src.chains.intent_classifier import classify_intent
 
 
 @pytest.mark.integration
@@ -31,3 +32,31 @@ def test_llm_invalid_key_raises(monkeypatch):
     llm = get_llm()
     with pytest.raises(Exception):
         llm.invoke("test")
+
+
+# ---------------------------------------------------------------------------
+# F03 intent classifier integration tests (real LLM calls)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_classify_intent_build_real():
+    """Real LLM call: '帮我编译项目' should map to hispark-studio.build."""
+    result = classify_intent("帮我编译项目")
+    assert result["type"] == "action"
+    assert result["command"] == "hispark-studio.build"
+
+
+@pytest.mark.integration
+def test_classify_intent_flash_real():
+    """Real LLM call: '烧录固件' should map to hispark-studio.flash."""
+    result = classify_intent("烧录固件")
+    assert result["type"] == "action"
+    assert result["command"] == "hispark-studio.flash"
+
+
+@pytest.mark.integration
+def test_classify_intent_answer_real():
+    """Real LLM call: knowledge question should return type='answer'."""
+    result = classify_intent("如何查看栈分析结果？")
+    assert result["type"] == "answer"

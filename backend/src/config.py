@@ -3,6 +3,8 @@ import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 
+load_dotenv()  # 模块加载时执行一次，避免每次调用 get_llm() 重复读取磁盘
+
 
 def get_llm(model: str = "glm-4-flash") -> ChatOpenAI:
     """Return a ChatOpenAI instance configured for ZhipuAI.
@@ -16,7 +18,6 @@ def get_llm(model: str = "glm-4-flash") -> ChatOpenAI:
     Raises:
         ValueError: If ZHIPU_API_KEY environment variable is not set or is empty.
     """
-    load_dotenv()
 
     api_key = os.getenv("ZHIPU_API_KEY")
     if not api_key:

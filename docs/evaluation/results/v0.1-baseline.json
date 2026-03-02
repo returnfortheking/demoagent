@@ -1,0 +1,199 @@
+{
+  "version": "v0.1",
+  "timestamp": "2026-03-02T13:31:39.917965+00:00",
+  "total": 20,
+  "correct": 9,
+  "command_match_rate": 0.45,
+  "results": [
+    {
+      "id": "op_001",
+      "input": "帮我编译",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.build",
+      "predicted_type": "action",
+      "predicted_command": "hispark-studio.build",
+      "match": true
+    },
+    {
+      "id": "op_002",
+      "input": "编译一下项目",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.build",
+      "predicted_type": "action",
+      "predicted_command": "hispark-studio.build",
+      "match": true
+    },
+    {
+      "id": "op_003",
+      "input": "重新编译",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.rebuild",
+      "predicted_type": "action",
+      "predicted_command": "hispark-studio.rebuild",
+      "match": true
+    },
+    {
+      "id": "op_004",
+      "input": "全量编译，不用增量",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.rebuild",
+      "predicted_type": "action",
+      "predicted_command": "hispark-studio.rebuild",
+      "match": true
+    },
+    {
+      "id": "op_005",
+      "input": "清除编译产物",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.clean",
+      "predicted_type": "action",
+      "predicted_command": "hispark-studio.clean",
+      "match": true
+    },
+    {
+      "id": "op_006",
+      "input": "清除一下",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.clean",
+      "predicted_type": "answer",
+      "predicted_command": "",
+      "match": false
+    },
+    {
+      "id": "op_007",
+      "input": "停止编译",
+      "expected_type": "action",
+      "expected_command": "stopBuild",
+      "predicted_type": "action",
+      "predicted_command": "stopBuild",
+      "match": true
+    },
+    {
+      "id": "op_008",
+      "input": "取消当前的编译任务",
+      "expected_type": "action",
+      "expected_command": "stopBuild",
+      "predicted_type": "action",
+      "predicted_command": "stopBuild",
+      "match": true
+    },
+    {
+      "id": "op_009",
+      "input": "烧录",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.flash",
+      "predicted_type": "action",
+      "predicted_command": "hispark-studio.flash",
+      "match": true
+    },
+    {
+      "id": "op_010",
+      "input": "帮我把固件烧到板子上",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.flash",
+      "predicted_type": "action",
+      "predicted_command": "hispark-studio.flash",
+      "match": true
+    },
+    {
+      "id": "op_011",
+      "input": "下载固件到开发板",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.flash",
+      "predicted_type": "",
+      "predicted_command": "",
+      "match": false,
+      "error": "timed out"
+    },
+    {
+      "id": "op_012",
+      "input": "只烧某几个分区",
+      "expected_type": "action",
+      "expected_command": "portionOfBurn",
+      "predicted_type": "",
+      "predicted_command": "",
+      "match": false,
+      "error": "timed out"
+    },
+    {
+      "id": "op_013",
+      "input": "部分烧录",
+      "expected_type": "action",
+      "expected_command": "portionOfBurn",
+      "predicted_type": "",
+      "predicted_command": "",
+      "match": false,
+      "error": "timed out"
+    },
+    {
+      "id": "op_014",
+      "input": "帮我做栈分析",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.stackAnalysis",
+      "predicted_type": "",
+      "predicted_command": "",
+      "match": false,
+      "error": "timed out"
+    },
+    {
+      "id": "op_015",
+      "input": "分析一下函数调用栈，看看哪里开销最大",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.stackAnalysis",
+      "predicted_type": "",
+      "predicted_command": "",
+      "match": false,
+      "error": "timed out"
+    },
+    {
+      "id": "op_016",
+      "input": "栈溢出风险分析",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.stackAnalysis",
+      "predicted_type": "",
+      "predicted_command": "",
+      "match": false,
+      "error": "timed out"
+    },
+    {
+      "id": "op_017",
+      "input": "镜像分析",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.imageAnalysis",
+      "predicted_type": "",
+      "predicted_command": "",
+      "match": false,
+      "error": "timed out"
+    },
+    {
+      "id": "op_018",
+      "input": "Flash 还剩多少空间",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.imageAnalysis",
+      "predicted_type": "",
+      "predicted_command": "",
+      "match": false,
+      "error": "timed out"
+    },
+    {
+      "id": "op_019",
+      "input": "看看各内存区域的占用情况",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.imageAnalysis",
+      "predicted_type": "",
+      "predicted_command": "",
+      "match": false,
+      "error": "timed out"
+    },
+    {
+      "id": "op_020",
+      "input": "帮我查查哪个 .o 文件最大",
+      "expected_type": "action",
+      "expected_command": "hispark-studio.imageAnalysis",
+      "predicted_type": "",
+      "predicted_command": "",
+      "match": false,
+      "error": "timed out"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ export function run(): Promise<void> {
     return new Promise((resolve, reject) => {
         mocha.addFile(path.join(testDir, 'apiClient.test.js'));
         mocha.addFile(path.join(testDir, 'commandExecutor.test.js'));
+        mocha.addFile(path.join(testDir, 'chatPanel.test.js'));
         mocha.run(failures => {
             if (failures > 0) {
                 reject(new Error(`${failures} test(s) failed`));
@@ -14,5 +15,13 @@ export function run(): Promise<void> {
                 resolve();
             }
         });
+    });
+}
+
+// Bootstrap: invoke run() when executed directly with node
+if (require.main === module) {
+    run().catch(err => {
+        console.error(err);
+        process.exit(1);
     });
 }

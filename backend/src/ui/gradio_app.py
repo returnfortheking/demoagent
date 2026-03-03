@@ -78,7 +78,6 @@ def build_demo() -> gr.ChatInterface:
         title="HiSpark AI Agent",
         description="向 HiSpark Studio AI 助手发送指令，例如：编译项目、烧录、支持哪些芯片",
         examples=["编译项目", "烧录", "支持哪些芯片"],
-        type="messages",
     )
 
 

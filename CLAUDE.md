@@ -18,6 +18,17 @@
 3. **YAGNI**: 不为未来版本提前实现功能
 4. **每个版本 = 一个面经学习单元**: 见 `docs/plans/2026-02-28-design.md`
 
+## 生产代码规范（强制）
+
+**`src/` 目录下禁止出现任何为测试而存在的代码。**
+
+- 禁止为了让 mock/patch 能工作而在 `src/` 里加包装类（如 `_ChainWrapper`）
+- 遇到 Pydantic v2 / 第三方库 patch 限制时，正确解法是：
+  - **工厂函数**：`_get_chain()` 返回实例，测试 patch 工厂函数
+  - **依赖注入**：将依赖作为函数参数传入，测试直接传 mock 对象
+- 每次修改 `src/` 后运行检查：`python scripts/check_src_purity.py`
+- 背景：见 `docs/incidents/2026-03-04-chain-wrapper-in-production.md`
+
 ## 当前版本
 
 见 `git tag` 列表，当前开发版本见最新 tag。

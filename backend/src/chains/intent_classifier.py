@@ -1,22 +1,9 @@
 """Intent classifier using LangChain LLMChain (legacy, non-LCEL).
 
-The module-level ``_chain`` instance is created once at import time.  Unit
-tests mock ``src.chains.intent_classifier._chain.run`` to avoid real LLM
-calls.
-
-Implementation note
--------------------
-LLMChain (langchain 0.3.x) is a Pydantic v2 model.  Pydantic v2 models
-forbid arbitrary attribute assignment/deletion on *instances*, which means
-``mocker.patch("...._chain.run", ...)`` would normally fail when pytest-mock
-tries to restore the original value via ``delattr``.
-
-To keep the mock target at ``_chain.run`` (as required by the spec) while
-remaining fully compatible with pytest-mock, we wrap the underlying
-``LLMChain`` instance inside a plain Python ``_ChainWrapper`` object.  The
-wrapper exposes a regular ``run`` method that delegates to the inner chain's
-``run`` method.  Because ``_ChainWrapper`` is a plain Python class, its
-attributes can be freely patched.
+The module uses lazy initialization: ``_chain`` is NOT created at import time.
+It is built on the first call to ``_get_chain()``.  This means importing the
+module never triggers real LLM API calls, which allows unit tests to mock
+``src.chains.intent_classifier._get_chain`` without any network side-effects.
 """
 
 import json
@@ -60,29 +47,23 @@ _PROMPT_TEMPLATE = """\
 _prompt = PromptTemplate(input_variables=["message"], template=_PROMPT_TEMPLATE)
 
 # ---------------------------------------------------------------------------
-# Wrapper — makes _chain.run freely patchable by pytest-mock
+# Lazy-initialized module-level chain
 # ---------------------------------------------------------------------------
 
+_chain: LLMChain | None = None
 
-class _ChainWrapper:
-    """Thin wrapper around LLMChain to allow attribute-level mocking.
 
-    LLMChain is a Pydantic v2 BaseModel with ``extra='forbid'``, which
-    prevents ``setattr``/``delattr`` on arbitrary attributes.  By delegating
-    through this plain Python class, ``mocker.patch("...._chain.run", ...)``
-    works without restriction.
+def _get_chain() -> LLMChain:
+    """Return the module-level LLMChain, building it on first access.
+
+    The chain is constructed lazily so that importing this module does not
+    trigger any LLM API calls.  Subsequent calls return the cached instance.
     """
+    global _chain
+    if _chain is None:
+        _chain = LLMChain(llm=get_llm(), prompt=_prompt)
+    return _chain
 
-    def __init__(self, llm_chain: LLMChain) -> None:
-        self._llm_chain = llm_chain
-
-    def run(self, **kwargs) -> str:
-        """Invoke the underlying LLMChain and return its string output."""
-        return self._llm_chain.run(**kwargs)
-
-
-# Module-level chain instance (initialized once at import time)
-_chain = _ChainWrapper(LLMChain(llm=get_llm(), prompt=_prompt))
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -104,7 +85,7 @@ def classify_intent(message: str) -> dict:
             the JSON string does not start with ``{`` (i.e. there is a
             leading prefix).
     """
-    raw: str = _chain.run(message=message)
+    raw: str = _get_chain().run(message=message)
     stripped = raw.strip()
 
     # Strip markdown code fences if the LLM wrapped the JSON in them.

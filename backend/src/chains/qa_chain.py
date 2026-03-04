@@ -5,22 +5,10 @@ time.  It is built on the first call to ``answer_question()`` (or the internal
 ``_get_qa_chain()`` helper).  This means importing the module never triggers
 real embedding or LLM API calls, which allows unit tests to mock
 ``src.chains.qa_chain._get_qa_chain`` without any network side-effects.
-
-Implementation note
--------------------
-RetrievalQA (langchain 0.3.x) is a Pydantic v2 model, just like LLMChain.
-Pydantic v2 models forbid arbitrary attribute assignment/deletion, which means
-``mocker.patch("...._qa_chain.run", ...)`` would fail when pytest-mock tries
-to restore the original value via ``delattr``.
-
-The same ``_ChainWrapper`` pattern used in ``intent_classifier.py`` is applied
-here: the RetrievalQA instance is wrapped in a plain Python object whose
-``run`` method can be freely patched by pytest-mock.
 """
 
 import os
 import pathlib
-from typing import Optional
 
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
@@ -70,32 +58,10 @@ def build_retriever(docs: list[str]) -> BaseRetriever:
 
 
 # ---------------------------------------------------------------------------
-# Wrapper — makes _qa_chain.run freely patchable by pytest-mock
-# ---------------------------------------------------------------------------
-
-
-class _ChainWrapper:
-    """Thin wrapper around RetrievalQA to allow attribute-level mocking.
-
-    RetrievalQA is a Pydantic v2 BaseModel with ``model_config`` that
-    prevents ``setattr``/``delattr`` on arbitrary attributes.  By delegating
-    through this plain Python class, ``mocker.patch("...._qa_chain.run", ...)``
-    works without restriction.
-    """
-
-    def __init__(self, retrieval_qa: RetrievalQA) -> None:
-        self._retrieval_qa = retrieval_qa
-
-    def run(self, query: str) -> str:
-        """Invoke the underlying RetrievalQA chain and return its string output."""
-        return self._retrieval_qa.run(query)
-
-
-# ---------------------------------------------------------------------------
 # Lazy-initialized module-level chain
 # ---------------------------------------------------------------------------
 
-_qa_chain: Optional[_ChainWrapper] = None
+_qa_chain: RetrievalQA | None = None
 
 
 def _load_sample_docs() -> list[str]:
@@ -114,7 +80,7 @@ def _load_sample_docs() -> list[str]:
     return [text]
 
 
-def _get_qa_chain() -> _ChainWrapper:
+def _get_qa_chain() -> RetrievalQA:
     """Return the module-level QA chain, building it on first access.
 
     The chain is constructed lazily so that importing this module does not
@@ -124,12 +90,10 @@ def _get_qa_chain() -> _ChainWrapper:
     global _qa_chain
     if _qa_chain is None:
         retriever = build_retriever(_load_sample_docs())
-        _qa_chain = _ChainWrapper(
-            RetrievalQA.from_chain_type(
-                llm=get_llm(),
-                chain_type="stuff",
-                retriever=retriever,
-            )
+        _qa_chain = RetrievalQA.from_chain_type(
+            llm=get_llm(),
+            chain_type="stuff",
+            retriever=retriever,
         )
     return _qa_chain
 

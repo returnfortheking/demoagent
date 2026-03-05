@@ -1,15 +1,17 @@
 import * as vscode from 'vscode';
 import { getHtmlContent } from './chatHtml';
-import { defaultClient } from '../client/ApiClient';
+import { ApiClient, defaultClient } from '../client/ApiClient';
 import { CommandExecutor } from '../executor/CommandExecutor';
 
 export class ChatPanel {
     private static _panel: vscode.WebviewPanel | undefined;
+    private readonly _client: ApiClient;
     private readonly _executor: CommandExecutor;
     private readonly _webviewPanel: vscode.WebviewPanel;
 
-    constructor(panel: vscode.WebviewPanel) {
+    constructor(panel: vscode.WebviewPanel, client: ApiClient = defaultClient) {
         this._webviewPanel = panel;
+        this._client = client;
         this._executor = new CommandExecutor(
             async (cmd: string) => { await vscode.commands.executeCommand(cmd); },
             async (msg: string) => {
@@ -21,7 +23,7 @@ export class ChatPanel {
         this._webviewPanel.webview.onDidReceiveMessage(async (data: { type: string; message: string }) => {
             if (data.type !== 'chat') { return; }
             try {
-                const response = await defaultClient.sendMessage(data.message, 'chat-session');
+                const response = await this._client.sendMessage(data.message, 'chat-session');
                 await this._webviewPanel.webview.postMessage(response);
                 await this._executor.handle(response);
             } catch (err) {

@@ -16,13 +16,16 @@
   },
   "scripts": {
     "compile": "tsc -p ./",
-    "test": "node ./out/test/suite/index.js"
+    "test": "node ./out/test/suite/index.js",
+    "test:e2e": "tsc -p ./ && node ./out/test/e2e/runTests.js"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
     "@types/mocha": "^10.0.0",
     "@types/node": "^20.0.0",
+    "@vscode/test-electron": "^2.4.0",
     "mocha": "^10.0.0",
+    "playwright-core": "^1.50.0",
     "typescript": "^5.0.0"
   }
 }

@@ -20,16 +20,22 @@ python scripts/check_test_layers.py
 echo "[3/6] contract assertions (warning only)..."
 python scripts/check_contract_assertions.py
 
-echo "[4/6] unit tests..."
+echo "[4/8] unit tests (backend)..."
 cd "$ROOT/backend" && pytest tests/unit -x -q
 
-echo "[5/6] integration tests..."
+echo "[5/8] integration tests (backend)..."
 cd "$ROOT/backend" && pytest tests/integration -x -q
 
-echo "[6/6] E2E (extension + webview)..."
+echo "[6/8] backend E2E (API contract with live server)..."
+cd "$ROOT/backend" && pytest ../tests/e2e -x -q
+
+echo "[7/8] extension suite tests (Mocha, no VS Code)..."
+cd "$ROOT/extension" && npm test
+
+echo "[8/8] extension E2E (VS Code + Playwright)..."
 cd "$ROOT/extension" && E2E_MODE=gate npm run test:e2e
 
 echo ""
 echo "╔══════════════════════════════════════╗"
-echo "║  All 6 gates passed.                 ║"
+echo "║  All 8 gates passed.                 ║"
 echo "╚══════════════════════════════════════╝"

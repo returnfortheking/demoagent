@@ -496,6 +496,10 @@ curl http://localhost:8000/health
 ```
 预期: `{"status": "ok"}`
 
+> **CI 接入时机**：F27 完成后在同一版本（v0.3）接入 GitHub Actions，
+> `xvfb-run` 解决 Extension E2E 显示器问题，ZHIPU_API_KEY 配置为 Repository Secret。
+> Extension E2E 不进 Docker 容器，始终在 runner 宿主机执行。
+
 ---
 
 ### F28 — Webview 对话历史 + 来源展示

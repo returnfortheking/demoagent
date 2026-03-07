@@ -1,6 +1,8 @@
 import * as path from 'path';
 import * as cp from 'child_process';
+import * as fs from 'fs';
 import * as http from 'http';
+import * as os from 'os';
 import { runTests } from '@vscode/test-electron';
 import { runWebviewTests } from './webview.playwright';
 
@@ -69,13 +71,18 @@ async function main(): Promise<void> {
         // ── Phase 2: Playwright webview tests (Node.js, outside VS Code) ──────
         console.log('\n[E2E] Phase 2: Playwright webview tests');
 
+        const signalFile = path.join(os.tmpdir(), `e2e-signal-${Date.now()}`);
+        const e2eMode = process.env.E2E_MODE ?? 'manual';
+
         // Start VS Code with the keep-alive runner and CDP port open.
-        // indexKeepAlive opens the chat panel, then waits 20s.
+        // indexKeepAlive opens the chat panel, then polls signalFile to know when to exit.
         const keepAliveVsCode = runTests({
             extensionDevelopmentPath,
             extensionTestsPath: path.resolve(__dirname, './indexKeepAlive'),
             extensionTestsEnv: {
                 HISPARK_TEST_BACKEND_PORT: String(BACKEND_PORT),
+                E2E_SIGNAL_FILE: signalFile,
+                E2E_MODE: e2eMode,
             },
             launchArgs: [`--remote-debugging-port=${CDP_PORT}`],
         });
@@ -85,9 +92,14 @@ async function main(): Promise<void> {
         // sleep here which can miss timing windows on fast/slow machines.
         try {
             await runWebviewTests(CDP_PORT);
+            fs.writeFileSync(signalFile, 'pass');
+        } catch (err) {
+            fs.writeFileSync(signalFile, 'fail');
+            throw err;
         } finally {
             // Always wait for VS Code to close after keep-alive finishes.
             await keepAliveVsCode;
+            if (fs.existsSync(signalFile)) { fs.unlinkSync(signalFile); }
         }
 
     } finally {

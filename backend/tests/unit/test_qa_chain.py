@@ -1,56 +1,30 @@
 """Unit tests for the qa_chain module.
 
-Test 1: build_retriever returns a non-None object with get_relevant_documents method.
-         This test makes a real embedding API call to ZhipuAI (requires ZHIPU_API_KEY).
-         Marked @pytest.mark.integration so it is skipped in pure unit-test runs.
+Test 1: answer_question returns a non-empty string (mocked _get_qa_chain).
 
-Test 2: answer_question returns a non-empty string (mocked _get_qa_chain).
-
-Test 3: answer_question calls chain.run exactly once with the question text
+Test 2: answer_question calls chain.run exactly once with the question text
          (mocked _get_qa_chain).
 
-Mock strategy (Tests 2 & 3)
-----------------------------
+Mock strategy
+-------------
 Because ``_qa_chain`` is now lazily initialized (None at import time), patching
 ``src.chains.qa_chain._qa_chain.run`` would fail — the attribute is None until
 the first real call.  Instead, we patch ``src.chains.qa_chain._get_qa_chain``
 to return a MagicMock that has a ``run`` method.  This completely bypasses
 chain construction (no embedding or LLM calls) while still exercising the
 ``answer_question`` code path.
+
+Note: build_retriever integration test (requires real ZhipuAI API) lives in
+      backend/tests/integration/test_qa_chain.py
 """
 
 import pytest
 
-from src.chains.qa_chain import answer_question, build_retriever
+from src.chains.qa_chain import answer_question
 
 
 # ---------------------------------------------------------------------------
-# Scenario 1 – build_retriever returns a valid retriever object
-# ---------------------------------------------------------------------------
-@pytest.mark.integration
-def test_build_retriever_returns_non_none():
-    """build_retriever must return a non-None object that has get_relevant_documents.
-
-    This test makes a real call to the ZhipuAI embedding-3 API.
-    Requires a valid ZHIPU_API_KEY in the .env file.
-
-    Marked @pytest.mark.integration so it is excluded from pure unit-test runs:
-        pytest tests/unit/test_qa_chain.py -m "not integration"
-    """
-    docs = [
-        "BS21 芯片支持 Wi-Fi 和蓝牙双模，适用于智能家居场景。",
-        "BS20 芯片适用于低功耗 IoT 场景，内置 RISC-V 处理器。",
-        "烧录固件前需连接 USB 数据线并选择正确的串口号。",
-    ]
-
-    retriever = build_retriever(docs)
-
-    assert retriever is not None
-    assert hasattr(retriever, "get_relevant_documents")
-
-
-# ---------------------------------------------------------------------------
-# Scenario 2 – answer_question returns a non-empty string
+# Scenario 1 – answer_question returns a non-empty string
 # ---------------------------------------------------------------------------
 def test_answer_question_returns_string(mocker):
     """answer_question must return a non-empty string.

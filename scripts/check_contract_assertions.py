@@ -16,8 +16,9 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 TARGET_FILE = ROOT / "extension" / "src" / "client" / "ApiClient.ts"
 
-# 匹配形如 `xxx as SomeType` 但排除 `as object`（fetch 返回值常见写法）
-BARE_ASSERTION = re.compile(r"\bas\s+(?!object\b)([A-Z][A-Za-z]+)")
+# 匹配 return 语句末尾的裸断言：return xxx as DomainType
+# 排除内部转换用途（as Record<...>、as string[] 等带泛型或小写的形式）
+BARE_ASSERTION = re.compile(r"\breturn\b.+\bas\s+([A-Z][A-Za-z]+)\s*;")
 
 warnings: list[str] = []
 

@@ -93,6 +93,8 @@ export async function runWebviewTests(cdpPort: number): Promise<void> {
         const activeFrame = await findActiveFrameViaCdp(targetPage);
         if (activeFrame) {
             console.log('[Playwright] Using CDP frame access (active-frame).');
+
+            // ── Non-streaming test (v0.1 baseline) ──────────────────────────────
             await activeFrame.locator('#chat-input').fill(MESSAGE, { timeout: 15000 });
             await activeFrame.locator('#send-btn').click({ timeout: 5000 });
             console.log('[Playwright] Message sent. Waiting for backend response (~3-5s)...');
@@ -103,7 +105,55 @@ export async function runWebviewTests(cdpPort: number): Promise<void> {
             const text = await responseDiv.textContent() ?? '';
             assert.ok(text.includes('"type":"action"'), `Expected action response, got: ${text}`);
             assert.ok(text.includes('"command":"hispark-studio.build"'), `Expected build command, got: ${text}`);
-            console.log('[Playwright] ✓ Webview test passed: response rendered in DOM');
+            console.log('[Playwright] ✓ Non-streaming test passed: response rendered in DOM');
+
+            // ── Streaming answer test (F19) ──────────────────────────────────────
+            const divsBefore1 = await activeFrame.locator('#messages div').count();
+            await activeFrame.locator('#chat-input').fill('HiSpark Studio支持哪些芯片型号？', { timeout: 5000 });
+            await activeFrame.locator('#stream-btn').click({ timeout: 5000 });
+            console.log('[Playwright] Streaming answer: waiting for status bar...');
+
+            // Wait for status bar to show text (classify_intent takes 1-3s)
+            const deadline1 = Date.now() + 5000;
+            while (Date.now() < deadline1) {
+                const sb = await activeFrame.locator('#status-bar').textContent() ?? '';
+                if (sb.trim()) { break; }
+                await sleep(200);
+            }
+
+            // Wait for streaming bubble to appear in #messages
+            await activeFrame.locator('#messages div').nth(divsBefore1).waitFor({ timeout: 20000 });
+            const streamText = await activeFrame.locator('#messages div').nth(divsBefore1).textContent() ?? '';
+
+            // Wait for status bar to clear after [DONE]
+            const deadline2 = Date.now() + 10000;
+            while (Date.now() < deadline2) {
+                const sb = await activeFrame.locator('#status-bar').textContent() ?? '';
+                if (!sb.trim()) { break; }
+                await sleep(200);
+            }
+
+            const chipKeywords = ['BS20', 'BS21', 'WS63', '芯片', '型号', '支持'];
+            const hasChipKeyword = chipKeywords.some(kw => streamText.includes(kw));
+            assert.ok(hasChipKeyword, `Expected chip-related keyword in stream answer, got: ${streamText.slice(0, 200)}`);
+            console.log('[Playwright] ✓ Streaming answer test passed');
+
+            // ── Streaming action test (F19) ──────────────────────────────────────
+            await activeFrame.locator('#chat-input').fill('帮我编译项目', { timeout: 5000 });
+            await activeFrame.locator('#stream-btn').click({ timeout: 5000 });
+            console.log('[Playwright] Streaming action: waiting for actionDone message...');
+
+            // Wait for "已执行" div to appear in #messages
+            const actionMsgLocator = activeFrame.locator('#messages div').filter({ hasText: '已执行' }).first();
+            await actionMsgLocator.waitFor({ timeout: 20000 });
+            const actionText = await actionMsgLocator.textContent() ?? '';
+
+            assert.ok(actionText.includes('已执行'), `Expected '已执行' in message, got: ${actionText}`);
+            assert.ok(
+                actionText.includes('编译') || actionText.includes('项目') || actionText.includes('build'),
+                `Expected build-related text in action message, got: ${actionText}`
+            );
+            console.log('[Playwright] ✓ Streaming action test passed');
             return;
         }
 

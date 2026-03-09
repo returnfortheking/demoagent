@@ -8,6 +8,7 @@ export function run(): Promise<void> {
         mocha.addFile(path.join(testDir, 'apiClient.test.js'));
         mocha.addFile(path.join(testDir, 'commandExecutor.test.js'));
         mocha.addFile(path.join(testDir, 'chatPanel.test.js'));
+        mocha.addFile(path.join(testDir, 'streaming.test.js'));
         mocha.run(failures => {
             if (failures > 0) {
                 reject(new Error(`${failures} test(s) failed`));

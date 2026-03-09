@@ -1,14 +1,19 @@
-"""FastAPI application exposing the /chat and /health endpoints.
+"""FastAPI application exposing the /chat, /chat/stream and /health endpoints.
 
-The module imports ``classify_intent`` and ``answer_question`` at module level
-so that tests can patch them via:
+The module imports ``classify_intent``, ``answer_question``, and
+``_get_qa_chain`` at module level so that tests can patch them via:
   - ``mocker.patch("src.api.main.classify_intent", ...)``
   - ``mocker.patch("src.api.main.answer_question", ...)``
+  - ``mocker.patch("src.chains.qa_chain._get_qa_chain", ...)``
 """
 
-from typing import Union
+import json
+from typing import AsyncGenerator, Union
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
+
+import src.chains.qa_chain as _qa_chain_module
 
 from src.chains.intent_classifier import classify_intent
 from src.chains.qa_chain import answer_question
@@ -43,6 +48,40 @@ def chat(request: ChatRequest):
     # Default: knowledge Q&A answer
     answer = answer_question(request.message, session_id=request.thread_id)
     return AnswerResponse(answer=answer).model_dump()
+
+
+@app.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """Stream a chat response as Server-Sent Events.
+
+    - action intent: yields one action event then [DONE]
+    - answer intent: streams LLM tokens as delta events then [DONE]
+    """
+
+    async def generate() -> AsyncGenerator[str, None]:
+        intent = classify_intent(request.message)
+
+        if intent.get("type") == "action":
+            event_data = {
+                "thread_id": request.thread_id,
+                "type": "action",
+                "command": intent["command"],
+                "requires_confirmation": intent["requires_confirmation"],
+                "description": intent.get("description", ""),
+            }
+            yield f"data: {json.dumps(event_data, ensure_ascii=False)}\n\n"
+        else:
+            chain = _qa_chain_module._get_qa_chain()
+            async for token in chain.astream(
+                {"question": request.message},
+                config={"configurable": {"session_id": request.thread_id}},
+            ):
+                event_data = {"thread_id": request.thread_id, "delta": token}
+                yield f"data: {json.dumps(event_data, ensure_ascii=False)}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 
 @app.get("/health", response_model=HealthResponse)

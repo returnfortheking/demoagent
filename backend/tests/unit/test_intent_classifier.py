@@ -1,13 +1,12 @@
-"""Unit tests for the intent_classifier module.
+"""Unit tests for the intent_classifier module (v0.2 LCEL).
 
-Tests use mocking on `src.chains.intent_classifier._get_chain` so no real
-LLM calls are made.  All five scenarios must pass before and after the
-implementation is written.
+Tests mock `src.chains.intent_classifier._get_chain` so no real LLM calls
+are made.  The chain now uses LCEL + JsonOutputParser, so the mock stub
+returns a dict from `.invoke()` (not a JSON string from `.run()`).
 """
 
-import json
-
 import pytest
+from langchain_core.exceptions import OutputParserException
 
 from src.chains.intent_classifier import classify_intent
 
@@ -16,17 +15,14 @@ from src.chains.intent_classifier import classify_intent
 # Scenario 1 – build intent (action, no confirmation required)
 # ---------------------------------------------------------------------------
 def test_classify_intent_build_action(mocker):
-    """LLM returns valid JSON for a build command."""
-    llm_response = json.dumps(
-        {
-            "type": "action",
-            "command": "hispark-studio.build",
-            "requires_confirmation": False,
-            "description": "编译项目",
-        }
-    )
+    """Chain returns build action dict."""
     mock_chain = mocker.MagicMock()
-    mock_chain.run.return_value = llm_response
+    mock_chain.invoke.return_value = {
+        "type": "action",
+        "command": "hispark-studio.build",
+        "requires_confirmation": False,
+        "description": "编译项目",
+    }
     mocker.patch("src.chains.intent_classifier._get_chain", return_value=mock_chain)
 
     result = classify_intent("帮我编译项目")
@@ -40,17 +36,14 @@ def test_classify_intent_build_action(mocker):
 # Scenario 2 – flash intent (action, confirmation required)
 # ---------------------------------------------------------------------------
 def test_classify_intent_flash_action(mocker):
-    """LLM returns valid JSON for a flash command that requires confirmation."""
-    llm_response = json.dumps(
-        {
-            "type": "action",
-            "command": "hispark-studio.flash",
-            "requires_confirmation": True,
-            "description": "烧录固件",
-        }
-    )
+    """Chain returns flash action dict with requires_confirmation=True."""
     mock_chain = mocker.MagicMock()
-    mock_chain.run.return_value = llm_response
+    mock_chain.invoke.return_value = {
+        "type": "action",
+        "command": "hispark-studio.flash",
+        "requires_confirmation": True,
+        "description": "烧录固件",
+    }
     mocker.patch("src.chains.intent_classifier._get_chain", return_value=mock_chain)
 
     result = classify_intent("烧录固件")
@@ -64,10 +57,9 @@ def test_classify_intent_flash_action(mocker):
 # Scenario 3 – knowledge Q&A (answer type)
 # ---------------------------------------------------------------------------
 def test_classify_intent_answer(mocker):
-    """LLM returns valid JSON for a knowledge Q&A intent."""
-    llm_response = json.dumps({"type": "answer"})
+    """Chain returns answer type dict; no command field present."""
     mock_chain = mocker.MagicMock()
-    mock_chain.run.return_value = llm_response
+    mock_chain.invoke.return_value = {"type": "answer"}
     mocker.patch("src.chains.intent_classifier._get_chain", return_value=mock_chain)
 
     result = classify_intent("如何查看栈分析结果？")
@@ -78,12 +70,12 @@ def test_classify_intent_answer(mocker):
 
 
 # ---------------------------------------------------------------------------
-# Scenario 4 – LLM returns plain text (must raise ValueError)
+# Scenario 4 – OutputParserException → ValueError
 # ---------------------------------------------------------------------------
-def test_classify_intent_plain_text_raises(mocker):
-    """LLM returns plain text; classify_intent must raise ValueError."""
+def test_classify_intent_parser_exception_raises(mocker):
+    """OutputParserException from chain is re-raised as ValueError."""
     mock_chain = mocker.MagicMock()
-    mock_chain.run.return_value = "对不起，我不明白"
+    mock_chain.invoke.side_effect = OutputParserException("parse error")
     mocker.patch("src.chains.intent_classifier._get_chain", return_value=mock_chain)
 
     with pytest.raises(ValueError):
@@ -91,13 +83,32 @@ def test_classify_intent_plain_text_raises(mocker):
 
 
 # ---------------------------------------------------------------------------
-# Scenario 5 – LLM returns JSON with a leading prefix (must raise ValueError)
+# Scenario 5 – unknown type field → ValueError
 # ---------------------------------------------------------------------------
-def test_classify_intent_prefixed_json_raises(mocker):
-    """LLM returns a string with a non-JSON prefix; must raise ValueError."""
+def test_classify_intent_unknown_type_raises(mocker):
+    """Chain returns dict with unknown type; classify_intent must raise ValueError."""
     mock_chain = mocker.MagicMock()
-    mock_chain.run.return_value = '好的！{"type": "answer"}'
+    mock_chain.invoke.return_value = {"type": "unknown"}
     mocker.patch("src.chains.intent_classifier._get_chain", return_value=mock_chain)
 
     with pytest.raises(ValueError):
         classify_intent("随便说点什么")
+
+
+# ---------------------------------------------------------------------------
+# Scenario 6 – prefixed JSON (behavior change from v0.1)
+# ---------------------------------------------------------------------------
+def test_classify_intent_prefixed_json_succeeds(mocker):
+    """v0.2 behavior: JsonOutputParser handles prefix internally; no longer raises.
+
+    In v0.1, '好的！{"type": "answer"}' would raise ValueError because the
+    raw string did not start with '{'.  In v0.2, JsonOutputParser extracts
+    the JSON via regex, so the chain returns a clean dict — no exception.
+    """
+    mock_chain = mocker.MagicMock()
+    mock_chain.invoke.return_value = {"type": "answer"}
+    mocker.patch("src.chains.intent_classifier._get_chain", return_value=mock_chain)
+
+    result = classify_intent("随便说点什么")
+
+    assert result["type"] == "answer"

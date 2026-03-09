@@ -123,15 +123,17 @@ export async function runWebviewTests(cdpPort: number): Promise<void> {
 
             // Wait for streaming bubble to appear in #messages
             await activeFrame.locator('#messages div').nth(divsBefore1).waitFor({ timeout: 20000 });
-            const streamText = await activeFrame.locator('#messages div').nth(divsBefore1).textContent() ?? '';
 
-            // Wait for status bar to clear after [DONE]
-            const deadline2 = Date.now() + 10000;
+            // Wait for status bar to clear after [DONE] — stream is fully received
+            const deadline2 = Date.now() + 20000;
             while (Date.now() < deadline2) {
                 const sb = await activeFrame.locator('#status-bar').textContent() ?? '';
                 if (!sb.trim()) { break; }
                 await sleep(200);
             }
+
+            // Read final text only after streaming has completed
+            const streamText = await activeFrame.locator('#messages div').nth(divsBefore1).textContent() ?? '';
 
             const chipKeywords = ['BS20', 'BS21', 'WS63', '芯片', '型号', '支持'];
             const hasChipKeyword = chipKeywords.some(kw => streamText.includes(kw));

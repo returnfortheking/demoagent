@@ -18,7 +18,7 @@
 |------|------------|---------|---------|
 | v0.1 | F01–F14 | LLMChain + RetrievalQA + Gradio + Extension骨架 | Q2 Q3 Q14 ★MVP |
 | v0.2 | F15–F22 | LCEL + SSE流式 + Prompt版本管理 + API契约门禁 | Q1 |
-| v0.3 | F23–F30 | LangSmith + LLM-as-a-Judge + 性能基线 + Docker | Q6 Q7 |
+| v0.3 | F23–F31 | LangSmith + LLM-as-a-Judge + 性能基线 + Docker + 真实文档入库 | Q6 Q7 |
 | v0.4 | F31–F41 | 进阶RAG + RAGAS + K8s编排 | Q8 Q9 Q10 |
 | v0.5 | F42–F52 | LangGraph + Agentic RAG + 降级回滚 | Q4 Q11 Q12 |
 | v0.6 | F53–F58 | Checkpoint + HITL | Q5 Q15 |
@@ -307,9 +307,9 @@ pytest tests/unit/test_intent_classifier.py -v
 
 ---
 
-### F16 — RAG 链 LCEL 重构
+### F16 — RAG 链 LCEL 重构 + 会话记忆
 
-**commit:** `refactor(F16): rewrite QA chain as LCEL pipeline`
+**commit:** `refactor(F16): rewrite QA chain as LCEL pipeline with RunnableWithMessageHistory`
 
 **文件:**
 - Modify: `backend/src/chains/qa_chain.py`
@@ -319,7 +319,7 @@ pytest tests/unit/test_intent_classifier.py -v
 ```bash
 pytest tests/unit/test_qa_chain.py -v
 ```
-预期: 所有测试 PASSED，链使用 `RunnablePassthrough | prompt | llm | StrOutputParser()`
+预期: 所有测试 PASSED，链使用 `RunnablePassthrough | prompt | llm | StrOutputParser()` 并由 `RunnableWithMessageHistory` 包装，`answer_question` 接受 `session_id` 参数
 
 ---
 
@@ -535,9 +535,31 @@ python scripts/generate_docqa.py --input docs/hispark-readme.md --output docs/ev
 
 ---
 
-### F30 — git tag v0.3
+### F30 — 真实 HiSpark 文档入库
 
-**commit:** `chore(F30): tag v0.3 LangSmith + evaluation + Docker`
+**commit:** `feat(F30): ingest real HiSpark documentation into Chroma knowledge base`
+
+**文件:**
+- Create: `backend/scripts/ingest_docs.py` (读取 docs/hispark/ 目录，分块，写入 Chroma)
+- Create: `docs/hispark/` (存放真实 HiSpark 官方文档，MD/PDF 格式)
+- Modify: `backend/src/chains/qa_chain.py` (build_retriever 指向真实 Chroma 持久化路径)
+- Create: `docs/evaluation/results/v0.3-real-docs-baseline.json` (用真实文档重跑 F25 评估脚本的结果)
+
+**验收:**
+```bash
+cd backend && python scripts/ingest_docs.py --input ../docs/hispark/ --persist ./chroma_db
+pytest tests/unit/test_qa_chain.py -v
+python scripts/eval_runner.py --dataset docs/evaluation/docqa_generated.json
+```
+预期: 文档入库成功；QA chain 单测 PASSED；评估脚本产出含真实指标的 JSON（与 sample_docs 基线可对比）
+
+> **里程碑意义**: 此 Feature 之后，所有评估指标均基于真实内容，调优过程具备可比性。
+
+---
+
+### F31 — git tag v0.3
+
+**commit:** `chore(F31): tag v0.3 LangSmith + evaluation + Docker + real docs`
 
 ---
 
@@ -545,9 +567,9 @@ python scripts/generate_docqa.py --input docs/hispark-readme.md --output docs/ev
 
 > 目标: 生产级检索管道，量化评估质量，服务可编排部署
 
-### F31 — BGE 向量 + FAISS 存储
+### F32 — BGE 向量 + FAISS 存储
 
-**commit:** `feat(F31): add BGE embeddings with FAISS vector store`
+**commit:** `feat(F32): add BGE embeddings with FAISS vector store`
 
 **文件:**
 - Create: `backend/src/retrieval/vector_store.py`
@@ -561,9 +583,9 @@ pytest tests/unit/test_vector_store.py -v
 
 ---
 
-### F32 — BM25 稀疏检索
+### F33 — BM25 稀疏检索
 
-**commit:** `feat(F32): add BM25 sparse retriever`
+**commit:** `feat(F33): add BM25 sparse retriever`
 
 **文件:**
 - Create: `backend/src/retrieval/bm25_retriever.py`
@@ -577,9 +599,9 @@ pytest tests/unit/test_bm25.py -v
 
 ---
 
-### F33 — RRF 融合检索
+### F34 — RRF 融合检索
 
-**commit:** `feat(F33): add RRF fusion retriever (BM25 + vector)`
+**commit:** `feat(F34): add RRF fusion retriever (BM25 + vector)`
 
 **文件:**
 - Create: `backend/src/retrieval/hybrid_retriever.py`
@@ -593,9 +615,9 @@ pytest tests/unit/test_hybrid_retriever.py -v
 
 ---
 
-### F34 — BGE-Reranker 精排
+### F35 — BGE-Reranker 精排
 
-**commit:** `feat(F34): add BGE-Reranker cross-encoder for result reranking`
+**commit:** `feat(F35): add BGE-Reranker cross-encoder for result reranking`
 
 **文件:**
 - Create: `backend/src/retrieval/reranker.py`
@@ -609,9 +631,9 @@ pytest tests/unit/test_reranker.py -v
 
 ---
 
-### F35 — 语义分块
+### F36 — 语义分块
 
-**commit:** `feat(F35): add semantic chunking strategy`
+**commit:** `feat(F36): add semantic chunking strategy`
 
 **文件:**
 - Create: `backend/src/ingestion/chunker.py`
@@ -625,9 +647,9 @@ pytest tests/unit/test_chunker.py -v
 
 ---
 
-### F36 — RAGAS 评估管道
+### F37 — RAGAS 评估管道
 
-**commit:** `feat(F36): add RAGAS evaluation pipeline (4 metrics)`
+**commit:** `feat(F37): add RAGAS evaluation pipeline (4 metrics)`
 
 **文件:**
 - Create: `backend/src/evaluation/ragas_eval.py`
@@ -643,9 +665,9 @@ python scripts/eval_runner.py --mode ragas
 
 ---
 
-### F37 — K8s 编排
+### F38 — K8s 编排
 
-**commit:** `feat(F37): add Kubernetes manifests for backend deployment`
+**commit:** `feat(F38): add Kubernetes manifests for backend deployment`
 
 **文件:**
 - Create: `k8s/deployment.yaml`
@@ -663,9 +685,9 @@ curl http://$(kubectl get svc hispark-backend -o jsonpath='{.spec.clusterIP}'):8
 
 ---
 
-### F38 — 知识库上传 API
+### F39 — 知识库上传 API
 
-**commit:** `feat(F38): add knowledge base upload endpoint (POST /kb/upload)`
+**commit:** `feat(F39): add knowledge base upload endpoint (POST /kb/upload)`
 
 **文件:**
 - Modify: `backend/src/api/main.py`
@@ -679,9 +701,9 @@ pytest tests/unit/test_kb_api.py -v
 
 ---
 
-### F39 — Webview 知识库上传 UI
+### F40 — Webview 知识库上传 UI
 
-**commit:** `feat(F39): add knowledge base upload UI in Webview`
+**commit:** `feat(F40): add knowledge base upload UI in Webview`
 
 **文件:**
 - Modify: `extension/src/webview/chat.html`
@@ -695,9 +717,9 @@ npm test
 
 ---
 
-### F40 — RAG 集成测试
+### F41 — RAG 集成测试
 
-**commit:** `test(F40): integration test for full RAG pipeline (upload → query → evaluate)`
+**commit:** `test(F41): integration test for full RAG pipeline (upload → query → evaluate)`
 
 **文件:**
 - Create: `tests/e2e/test_e2e_v04_rag.py`
@@ -710,9 +732,9 @@ pytest tests/e2e/test_e2e_v04_rag.py -v
 
 ---
 
-### F41 — git tag v0.4
+### F42 — git tag v0.4
 
-**commit:** `chore(F41): tag v0.4 advanced RAG + RAGAS + K8s`
+**commit:** `chore(F42): tag v0.4 advanced RAG + RAGAS + K8s`
 
 ---
 
@@ -720,9 +742,9 @@ pytest tests/e2e/test_e2e_v04_rag.py -v
 
 > 目标: 引入状态图，实现 retrieve→grade→generate/websearch 自适应流程，添加节点级降级策略
 
-### F42 — AgentState 定义
+### F43 — AgentState 定义
 
-**commit:** `feat(F42): define AgentState for LangGraph`
+**commit:** `feat(F43): define AgentState for LangGraph`
 
 **文件:**
 - Create: `backend/src/agent/state.py`
@@ -736,9 +758,9 @@ pytest tests/unit/test_agent_state.py -v
 
 ---
 
-### F43 — retrieve 节点
+### F44 — retrieve 节点
 
-**commit:** `feat(F43): add retrieve node to LangGraph`
+**commit:** `feat(F44): add retrieve node to LangGraph`
 
 **文件:**
 - Create: `backend/src/agent/nodes/retrieve.py`
@@ -752,9 +774,9 @@ pytest tests/unit/test_node_retrieve.py -v
 
 ---
 
-### F44 — grade 节点 + 条件边
+### F45 — grade 节点 + 条件边
 
-**commit:** `feat(F44): add grade node and conditional edge (relevant/not_relevant)`
+**commit:** `feat(F45): add grade node and conditional edge (relevant/not_relevant)`
 
 **文件:**
 - Create: `backend/src/agent/nodes/grade.py`
@@ -769,9 +791,9 @@ pytest tests/unit/test_node_grade.py -v
 
 ---
 
-### F45 — web_searcher Tool
+### F46 — web_searcher Tool
 
-**commit:** `feat(F45): add web_searcher tool (Tavily)`
+**commit:** `feat(F46): add web_searcher tool (Tavily)`
 
 **文件:**
 - Create: `backend/src/agent/tools/web_searcher.py`
@@ -785,9 +807,9 @@ pytest tests/unit/test_web_searcher.py -v
 
 ---
 
-### F46 — generate 节点
+### F47 — generate 节点
 
-**commit:** `feat(F46): add generate node with source attribution`
+**commit:** `feat(F47): add generate node with source attribution`
 
 **文件:**
 - Create: `backend/src/agent/nodes/generate.py`
@@ -801,9 +823,9 @@ pytest tests/unit/test_node_generate.py -v
 
 ---
 
-### F47 — StateGraph 组装
+### F48 — StateGraph 组装
 
-**commit:** `feat(F47): assemble LangGraph StateGraph (retrieve→grade→generate/websearch)`
+**commit:** `feat(F48): assemble LangGraph StateGraph (retrieve→grade→generate/websearch)`
 
 **文件:**
 - Create: `backend/src/agent/graph.py`
@@ -817,9 +839,9 @@ pytest tests/unit/test_graph.py -v
 
 ---
 
-### F48 — 工具调用可视化
+### F49 — 工具调用可视化
 
-**commit:** `feat(F48): stream node events to Webview for tool call visualization`
+**commit:** `feat(F49): stream node events to Webview for tool call visualization`
 
 **文件:**
 - Modify: `backend/src/api/main.py`
@@ -834,9 +856,9 @@ npm test
 
 ---
 
-### F49 — LangGraph 集成测试
+### F50 — LangGraph 集成测试
 
-**commit:** `test(F49): integration test for LangGraph agent (two paths)`
+**commit:** `test(F50): integration test for LangGraph agent (two paths)`
 
 **文件:**
 - Create: `tests/e2e/test_e2e_v05_graph.py`
@@ -849,9 +871,9 @@ pytest tests/e2e/test_e2e_v05_graph.py -v
 
 ---
 
-### F50 — 降级与回滚策略
+### F51 — 降级与回滚策略
 
-**commit:** `feat(F50): add per-node fallback strategy in LangGraph`
+**commit:** `feat(F51): add per-node fallback strategy in LangGraph`
 
 **文件:**
 - Modify: `backend/src/agent/nodes/grade.py`
@@ -866,9 +888,9 @@ cd backend && pytest tests/integration/test_fallbacks.py -v
 
 ---
 
-### F51 — RAGAS 评估更新 (LangGraph)
+### F52 — RAGAS 评估更新 (LangGraph)
 
-**commit:** `eval(F51): update RAGAS evaluation on LangGraph agent`
+**commit:** `eval(F52): update RAGAS evaluation on LangGraph agent`
 
 **文件:**
 - Create: `docs/evaluation/results/v0.5-ragas.json`
@@ -881,9 +903,9 @@ python scripts/eval_runner.py --mode ragas --version v0.5
 
 ---
 
-### F52 — git tag v0.5
+### F53 — git tag v0.5
 
-**commit:** `chore(F52): tag v0.5 LangGraph + Agentic RAG`
+**commit:** `chore(F53): tag v0.5 LangGraph + Agentic RAG`
 
 ---
 
@@ -891,9 +913,9 @@ python scripts/eval_runner.py --mode ragas --version v0.5
 
 > 目标: 记忆跨轮对话，危险操作须人工确认后恢复
 
-### F53 — Checkpoint 基线（MemorySaver）
+### F54 — Checkpoint 基线（MemorySaver）
 
-**commit:** `feat(F53): add MemorySaver checkpoint with thread_id session isolation`
+**commit:** `feat(F54): add MemorySaver checkpoint with thread_id session isolation`
 
 **文件:**
 - Modify: `backend/src/agent/graph.py`
@@ -903,13 +925,13 @@ python scripts/eval_runner.py --mode ragas --version v0.5
 ```bash
 pytest tests/unit/test_checkpoint.py -v
 ```
-预期: 同一进程内同一 thread_id 两次对话共享上下文，不同 thread_id 隔离 PASSED（跨进程持久化在 F79 加强）
+预期: 同一进程内同一 thread_id 两次对话共享上下文，不同 thread_id 隔离 PASSED（跨进程持久化在 F80 加强）
 
 ---
 
-### F54 — interrupt_before HITL 节点
+### F55 — interrupt_before HITL 节点
 
-**commit:** `feat(F54): add interrupt_before for flash/portionOfBurn nodes`
+**commit:** `feat(F55): add interrupt_before for flash/portionOfBurn nodes`
 
 **文件:**
 - Create: `backend/src/agent/nodes/flash.py`
@@ -924,9 +946,9 @@ pytest tests/unit/test_hitl_interrupt.py -v
 
 ---
 
-### F55 — /chat/confirm 恢复端点
+### F56 — /chat/confirm 恢复端点
 
-**commit:** `feat(F55): add /chat/confirm endpoint to resume interrupted graph`
+**commit:** `feat(F56): add /chat/confirm endpoint to resume interrupted graph`
 
 **文件:**
 - Modify: `backend/src/api/main.py`
@@ -940,9 +962,9 @@ pytest tests/unit/test_hitl_resume.py -v
 
 ---
 
-### F56 — VS Code 确认对话框
+### F57 — VS Code 确认对话框
 
-**commit:** `feat(F56): add VS Code modal confirmation dialog for HITL`
+**commit:** `feat(F57): add VS Code modal confirmation dialog for HITL`
 
 **文件:**
 - Modify: `extension/src/executor/CommandExecutor.ts`
@@ -957,9 +979,9 @@ npm test
 
 ---
 
-### F57 — HITL 集成测试
+### F58 — HITL 集成测试
 
-**commit:** `test(F57): integration test for full HITL flow (interrupt → confirm → resume)`
+**commit:** `test(F58): integration test for full HITL flow (interrupt → confirm → resume)`
 
 **文件:**
 - Create: `tests/e2e/test_e2e_v06_hitl.py`
@@ -972,9 +994,9 @@ pytest tests/e2e/test_e2e_v06_hitl.py -v
 
 ---
 
-### F58 — git tag v0.6
+### F59 — git tag v0.6
 
-**commit:** `chore(F58): tag v0.6 Checkpoint + HITL`
+**commit:** `chore(F59): tag v0.6 Checkpoint + HITL`
 
 ---
 
@@ -982,9 +1004,9 @@ pytest tests/e2e/test_e2e_v06_hitl.py -v
 
 > 目标: 按意图路由到专职 Agent
 
-### F59 — Supervisor 路由器
+### F60 — Supervisor 路由器
 
-**commit:** `feat(F59): add Supervisor agent for intent routing (DevOps vs Knowledge)`
+**commit:** `feat(F60): add Supervisor agent for intent routing (DevOps vs Knowledge)`
 
 **文件:**
 - Create: `backend/src/agent/supervisor.py`
@@ -998,9 +1020,9 @@ pytest tests/unit/test_supervisor.py -v
 
 ---
 
-### F60 — DevOps Agent 子图
+### F61 — DevOps Agent 子图
 
-**commit:** `feat(F60): add DevOps Agent subgraph (build/flash/analysis commands)`
+**commit:** `feat(F61): add DevOps Agent subgraph (build/flash/analysis commands)`
 
 **文件:**
 - Create: `backend/src/agent/agents/devops_agent.py`
@@ -1014,9 +1036,9 @@ pytest tests/unit/test_devops_agent.py -v
 
 ---
 
-### F61 — Knowledge Agent 子图
+### F62 — Knowledge Agent 子图
 
-**commit:** `feat(F61): add Knowledge Agent subgraph (RAG + web search)`
+**commit:** `feat(F62): add Knowledge Agent subgraph (RAG + web search)`
 
 **文件:**
 - Create: `backend/src/agent/agents/knowledge_agent.py`
@@ -1030,9 +1052,9 @@ pytest tests/unit/test_knowledge_agent.py -v
 
 ---
 
-### F62 — Webview 多 Agent 状态显示
+### F63 — Webview 多 Agent 状态显示
 
-**commit:** `feat(F62): show active agent indicator in Webview`
+**commit:** `feat(F63): show active agent indicator in Webview`
 
 **文件:**
 - Modify: `extension/src/webview/chat.html`
@@ -1046,9 +1068,9 @@ npm test
 
 ---
 
-### F63 — Multi-Agent 集成测试
+### F64 — Multi-Agent 集成测试
 
-**commit:** `test(F63): integration test for multi-agent routing`
+**commit:** `test(F64): integration test for multi-agent routing`
 
 **文件:**
 - Create: `tests/e2e/test_e2e_v07_multiagent.py`
@@ -1061,9 +1083,9 @@ pytest tests/e2e/test_e2e_v07_multiagent.py -v
 
 ---
 
-### F64 — git tag v0.7
+### F65 — git tag v0.7
 
-**commit:** `chore(F64): tag v0.7 Multi-Agent Supervisor`
+**commit:** `chore(F65): tag v0.7 Multi-Agent Supervisor`
 
 ---
 
@@ -1071,9 +1093,9 @@ pytest tests/e2e/test_e2e_v07_multiagent.py -v
 
 > 目标: Python Agent 作为 MCP Client 调用外部工具；HiSpark Extension 作为 MCP Server
 
-### F65 — Python MCP Client (filesystem)
+### F66 — Python MCP Client (filesystem)
 
-**commit:** `feat(F65): add MCP client connecting to filesystem MCP server`
+**commit:** `feat(F66): add MCP client connecting to filesystem MCP server`
 
 **文件:**
 - Create: `backend/src/mcp/client.py`
@@ -1087,9 +1109,9 @@ pytest tests/unit/test_mcp_client.py -v
 
 ---
 
-### F66 — Python MCP Client (web-search)
+### F67 — Python MCP Client (web-search)
 
-**commit:** `feat(F66): add MCP client connecting to web-search MCP server`
+**commit:** `feat(F67): add MCP client connecting to web-search MCP server`
 
 **文件:**
 - Modify: `backend/src/mcp/client.py`
@@ -1103,9 +1125,9 @@ pytest tests/unit/test_mcp_websearch.py -v
 
 ---
 
-### F67 — HiSpark MCP Server 初始化
+### F68 — HiSpark MCP Server 初始化
 
-**commit:** `feat(F67): add HiSpark MCP Server to Extension`
+**commit:** `feat(F68): add HiSpark MCP Server to Extension`
 
 **文件:**
 - Create: `extension/src/mcp/HiSparkMcpServer.ts`
@@ -1119,9 +1141,9 @@ npm test
 
 ---
 
-### F68 — MCP Tool: hispark_build/rebuild/clean
+### F69 — MCP Tool: hispark_build/rebuild/clean
 
-**commit:** `feat(F68): expose hispark_build/rebuild/clean as MCP Tools`
+**commit:** `feat(F69): expose hispark_build/rebuild/clean as MCP Tools`
 
 **文件:**
 - Modify: `extension/src/mcp/HiSparkMcpServer.ts`
@@ -1135,9 +1157,9 @@ npm test
 
 ---
 
-### F69 — MCP Tool: hispark_flash/stackAnalysis/imageAnalysis
+### F70 — MCP Tool: hispark_flash/stackAnalysis/imageAnalysis
 
-**commit:** `feat(F69): expose flash/stackAnalysis/imageAnalysis as MCP Tools`
+**commit:** `feat(F70): expose flash/stackAnalysis/imageAnalysis as MCP Tools`
 
 **文件:**
 - Modify: `extension/src/mcp/HiSparkMcpServer.ts`
@@ -1150,9 +1172,9 @@ npm test
 
 ---
 
-### F70 — Agent 运行时发现 HiSpark MCP Tools
+### F71 — Agent 运行时发现 HiSpark MCP Tools
 
-**commit:** `feat(F70): Agent discovers HiSpark commands via MCP at runtime`
+**commit:** `feat(F71): Agent discovers HiSpark commands via MCP at runtime`
 
 **文件:**
 - Modify: `backend/src/agent/graph.py`
@@ -1166,9 +1188,9 @@ pytest tests/unit/test_mcp_tool_discovery.py -v
 
 ---
 
-### F71 — MCP 对比文档
+### F72 — MCP 对比文档
 
-**commit:** `docs(F71): add MCP vs Function Calling comparison note`
+**commit:** `docs(F72): add MCP vs Function Calling comparison note`
 
 **文件:**
 - Create: `docs/notes/mcp-vs-function-calling.md`
@@ -1177,9 +1199,9 @@ pytest tests/unit/test_mcp_tool_discovery.py -v
 
 ---
 
-### F72 — MCP 集成测试
+### F73 — MCP 集成测试
 
-**commit:** `test(F72): integration test for MCP (Agent ↔ HiSpark MCP Server)`
+**commit:** `test(F73): integration test for MCP (Agent ↔ HiSpark MCP Server)`
 
 **文件:**
 - Create: `tests/e2e/test_e2e_v08_mcp.py`
@@ -1192,9 +1214,9 @@ pytest tests/e2e/test_e2e_v08_mcp.py -v
 
 ---
 
-### F73 — RAGAS 最终评估
+### F74 — RAGAS 最终评估
 
-**commit:** `eval(F73): final RAGAS evaluation on full agent (v0.8)`
+**commit:** `eval(F74): final RAGAS evaluation on full agent (v0.8)`
 
 **文件:**
 - Create: `docs/evaluation/results/v0.8-ragas-final.json`
@@ -1207,17 +1229,17 @@ python scripts/eval_runner.py --mode ragas --version v0.8
 
 ---
 
-### F74 — git tag v0.8
+### F75 — git tag v0.8
 
-**commit:** `chore(F74): tag v0.8 MCP integration`
+**commit:** `chore(F75): tag v0.8 MCP integration`
 
 ---
 
 ## v1.0 — 发布准备
 
-### F75 — OpenAPI Spec 完善
+### F76 — OpenAPI Spec 完善
 
-**commit:** `docs(F75): finalize OpenAPI spec for /chat and /kb endpoints`
+**commit:** `docs(F76): finalize OpenAPI spec for /chat and /kb endpoints`
 
 **文件:**
 - Create: `docs/api-spec.yaml`
@@ -1230,9 +1252,9 @@ python -c "import yaml; yaml.safe_load(open('docs/api-spec.yaml'))"
 
 ---
 
-### F76 — .vsix 打包
+### F77 — .vsix 打包
 
-**commit:** `chore(F76): package VS Code extension as .vsix`
+**commit:** `chore(F77): package VS Code extension as .vsix`
 
 **文件:**
 - Modify: `extension/package.json` (publisher, version, icon)
@@ -1246,18 +1268,18 @@ ls *.vsix
 
 ---
 
-### F77 — README 更新
+### F78 — README 更新
 
-**commit:** `docs(F77): update README with architecture diagram and version history`
+**commit:** `docs(F78): update README with architecture diagram and version history`
 
 **文件:**
 - Modify: `README.md`
 
 ---
 
-### F78 — 发布说明与变更日志冻结
+### F79 — 发布说明与变更日志冻结
 
-**commit:** `docs(F78): finalize changelog and release checklist for v1.0`
+**commit:** `docs(F79): finalize changelog and release checklist for v1.0`
 
 **文件:**
 - Create: `docs/changelogs/v1.0-release-notes.md`
@@ -1271,9 +1293,9 @@ python -c "from pathlib import Path; print(Path('docs/changelogs/v1.0-release-no
 
 ---
 
-### F79 — Checkpoint 持久化升级（Sqlite/Postgres）
+### F80 — Checkpoint 持久化升级（Sqlite/Postgres）
 
-**commit:** `feat(F79): add durable checkpoint saver for cross-process resume`
+**commit:** `feat(F80): add durable checkpoint saver for cross-process resume`
 
 **文件:**
 - Modify: `backend/src/agent/graph.py`
@@ -1288,9 +1310,9 @@ cd backend && pytest tests/integration/test_checkpoint_persistence.py -v
 
 ---
 
-### F80 — 安全基线门禁（Tool + KB）
+### F81 — 安全基线门禁（Tool + KB）
 
-**commit:** `feat(F80): add security baseline for tool whitelist and kb upload limits`
+**commit:** `feat(F81): add security baseline for tool whitelist and kb upload limits`
 
 **文件:**
 - Modify: `backend/src/api/main.py`
@@ -1305,9 +1327,9 @@ cd backend && pytest tests/unit/test_security_baseline.py -v
 
 ---
 
-### F81 — git tag v1.0
+### F82 — git tag v1.0
 
-**commit:** `chore(F81): tag v1.0 production release`
+**commit:** `chore(F82): tag v1.0 production release`
 
 ---
 
@@ -1321,13 +1343,13 @@ cd backend && pytest tests/unit/test_security_baseline.py -v
 | F15–F17 | v0.2 | LCEL 重构 + Prompt 版本管理 |
 | F18–F22 | v0.2 | SSE 流式 + API 契约门禁 |
 | F23–F27 | v0.3 | LangSmith + 评估 + 性能基线 + Docker |
-| F28–F30 | v0.3 | Webview 来源展示 + RAGAS 数据集 |
-| F31–F37 | v0.4 | 进阶 RAG + RAGAS + K8s |
-| F38–F41 | v0.4 | KB 上传 + RAG 集成测试 |
-| F42–F52 | v0.5 | LangGraph + Agentic RAG + 降级回滚 |
-| F53–F58 | v0.6 | Checkpoint + HITL |
-| F59–F64 | v0.7 | Multi-Agent Supervisor |
-| F65–F74 | v0.8 | MCP Client + Server |
-| F75–F81 | v1.0 | 发布准备 |
+| F28–F31 | v0.3 | Webview 来源展示 + RAGAS 数据集 + 真实文档入库 |
+| F32–F38 | v0.4 | 进阶 RAG + RAGAS + K8s |
+| F39–F42 | v0.4 | KB 上传 + RAG 集成测试 |
+| F43–F53 | v0.5 | LangGraph + Agentic RAG + 降级回滚 |
+| F54–F59 | v0.6 | Checkpoint + HITL |
+| F60–F65 | v0.7 | Multi-Agent Supervisor |
+| F66–F75 | v0.8 | MCP Client + Server |
+| F76–F82 | v1.0 | 发布准备 |
 
-**总计: 81 个 git 提交节点**
+**总计: 82 个 git 提交节点**

@@ -330,8 +330,10 @@ while (Date.now() < deadline) {
 
 ## 八、keepAlive 机制
 
+### v0.1 原始实现（固定 sleep）
+
 ```typescript
-// indexKeepAlive.ts
+// indexKeepAlive.ts —— 早期版本
 export async function run(): Promise<void> {
     const client = new ApiClient(`http://127.0.0.1:${backendPort}`);
     const panel = vscode.window.createWebviewPanel(...);
@@ -346,6 +348,40 @@ export async function run(): Promise<void> {
 因为命令底层走 `createOrShow()` → `defaultClient`（port 8000），会打到错误的后端。直接用 DI 构造函数才能注入测试端口。
 
 45 秒 = VS Code 启动（5s）+ webview 渲染（5s）+ Playwright 连接操作（10s）+ LLM 响应（5s）+ 余量（20s）。
+
+**问题**：用例 10 秒跑完，VS Code 还要傻等剩下 35 秒才关闭，每次 E2E 耗时约 1 分钟。
+
+---
+
+### v0.1.3 改进：信号文件机制
+
+**核心思路**：用例跑完后立刻发信号，VS Code 收到信号后立即关闭，而不是等固定时间。
+
+```
+runTests.ts                          indexKeepAlive.ts
+─────────────────────────────────    ─────────────────────────────────
+创建信号文件路径 signalFile            轮询检查 signalFile 是否出现
+注入 E2E_SIGNAL_FILE 环境变量  ──→   每 500ms 检查一次（最多等 90s）
+                                                │
+Playwright 用例执行完毕                          │
+  → 成功：writeFileSync(signalFile, 'pass')     │
+  → 失败：writeFileSync(signalFile, 'fail')  ←──┘ signalFile 出现
+  → finally: await keepAliveVsCode               VS Code 读取结果后退出
+                                              runTests.ts 的 await 返回
+```
+
+**两种模式**（通过 `E2E_MODE` 环境变量控制）：
+
+| 模式 | 用途 | 失败时行为 |
+|------|------|-----------|
+| `gate` | CI / commit-msg hook | 立刻退出（不等待） |
+| `manual` | 本地手动调试 | 等 5 秒再退出（方便截图排查） |
+
+**效果**：E2E 总耗时从 ~60s 降至 ~25s（用例执行完立刻关闭，节省 35s 固定等待）。
+
+### 面试怎么说
+
+> "最初 keepAlive 用固定 45 秒 sleep，用例 10 秒跑完后还要傻等 35 秒。我改成信号文件机制：runTests.ts 把信号文件路径通过环境变量注入给 indexKeepAlive.ts，Playwright 用例执行完后写入 pass/fail，keepAlive 侧轮询到文件出现后立即退出，VS Code 也随之关闭。同时用 E2E_MODE 区分 gate 模式（失败立刻退出）和 manual 模式（失败等 5 秒方便排查），E2E 总耗时从 60 秒降到 25 秒。"
 
 ---
 

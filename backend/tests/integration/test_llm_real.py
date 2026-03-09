@@ -75,7 +75,7 @@ def test_rag_sdk_download_url():
     The sample_docs.md fixture contains the exact git clone URL with 'gitee'
     and 'fbb_ws63', so the RAG answer must include both keywords.
     """
-    answer = answer_question("WS63的SDK从哪里下载？")
+    answer = answer_question("WS63的SDK从哪里下载？", session_id="integration-test")
     assert "gitee" in answer, (
         f"Expected 'gitee' in answer, got: {answer!r}"
     )
@@ -91,7 +91,7 @@ def test_rag_toolchain_env_variable():
     The sample_docs.md fixture explicitly states that HISPARK_TOOL_PATH is
     added to the user environment after toolchain download completes.
     """
-    answer = answer_question("工具链安装完成后会添加什么环境变量？")
+    answer = answer_question("工具链安装完成后会添加什么环境变量？", session_id="integration-test")
     assert "HISPARK_TOOL_PATH" in answer, (
         f"Expected 'HISPARK_TOOL_PATH' in answer, got: {answer!r}"
     )
@@ -104,7 +104,7 @@ def test_rag_sdk_series():
     The sample_docs.md fixture states that both WS63 and BS2X SDK series
     are available for download through the HiSpark Studio plugin.
     """
-    answer = answer_question("HiSpark支持下载哪些系列的SDK？")
+    answer = answer_question("HiSpark支持下载哪些系列的SDK？", session_id="integration-test")
     assert "WS63" in answer, (
         f"Expected 'WS63' in answer, got: {answer!r}"
     )
@@ -121,7 +121,7 @@ def test_rag_toolchain_path_restriction():
     not contain Chinese characters or spaces — at least one of these two
     keywords must appear in the answer.
     """
-    answer = answer_question("工具链文件夹路径有什么限制？")
+    answer = answer_question("工具链文件夹路径有什么限制？", session_id="integration-test")
     has_chinese_keyword = "中文" in answer
     has_space_keyword = "空格" in answer
     assert has_chinese_keyword or has_space_keyword, (

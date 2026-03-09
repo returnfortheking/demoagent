@@ -41,7 +41,7 @@ def chat(request: ChatRequest):
         ).model_dump()
 
     # Default: knowledge Q&A answer
-    answer = answer_question(request.message)
+    answer = answer_question(request.message, session_id=request.thread_id)
     return AnswerResponse(answer=answer).model_dump()
 
 

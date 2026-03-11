@@ -106,7 +106,108 @@ Playwright 在这 45 秒窗口内完成所有 webview 操作。
 
 ---
 
-## 三、开发过程中解决的 5 个问题
+## 三、完整执行流程
+
+### 编排层（Node.js runTests.js）
+
+```
+npm run test:e2e
+    ↓
+tsc 编译 TypeScript
+    ↓
+node out/test/e2e/runTests.js 启动
+    ↓
+spawn uvicorn（Python 后端，port 8001）
+    ↓
+轮询 GET /health，等到 200 OK
+    ↓
+Phase 1 → Phase 2（顺序执行）
+```
+
+### Phase 1：Extension Host 内跑 Mocha
+
+```
+@vscode/test-electron 启动 VS Code
+    ↓
+VS Code 加载扩展，调用 extensionTestsPath 指定的 Mocha runner
+    ↓
+Mocha 在 Extension Host 进程内执行：
+  - 测试扩展激活
+  - 测试 ChatPanel 构造函数 DI（注入 port 8001 的 ApiClient）
+  - 直接调用后端 POST /chat，验证响应格式
+    ↓
+3 tests passing，VS Code 进程退出
+```
+
+Phase 1 不涉及 Webview，纯 Extension Host 逻辑。
+
+### Phase 2：Playwright 操作真实 Webview（三条并行时间线）
+
+```
+时间线 A：@vscode/test-electron（Node.js 进程）
+    ↓
+启动 VS Code，附加参数 --remote-debugging-port=9222
+    ↓
+VS Code 内 indexKeepAlive.ts 执行：
+  new ChatPanel(panel, new ApiClient('http://127.0.0.1:8001'))
+  panel.reveal()   ← 触发 Webview 面板创建
+  await sleep(45000)   ← 保持进程存活 45 秒
+
+
+时间线 B：Playwright（同一 Node.js 进程，另一段代码）
+    ↓
+重试连接 CDP（每 500ms 一次，最多 20 次）
+  ← 端口一开放即连上（此时 VS Code 还在启动，Webview OOPIF 尚未创建）
+    ↓
+connectOverCDP 内部发送 Target.setAutoAttach
+    ↓
+等待 Webview OOPIF 被创建：
+  → OOPIF 创建时触发 attachedToTarget 事件
+  → Playwright 获得 frame 引用
+    ↓
+page.frames() 找到 active-frame（Webview 内 DOM）
+    ↓
+fill('#chat-input', '...') → click('#send-btn')
+    ↓
+waitFor('#messages') 等待响应渲染完成
+    ↓
+断言消息内容包含 'hispark-studio.build'
+
+
+时间线 C：消息流（fill/click 触发后）
+
+Webview DOM
+  → postMessage → Extension Host（ChatPanel.ts）
+  → http.request POST /chat → FastAPI（port 8001）
+  → LangGraph Agent → LLM
+  → SSE 响应流回 Extension Host
+  → postMessage → Webview DOM 渲染
+  → Playwright 断言通过
+```
+
+### CDP / OOPIF 时序（核心）
+
+```
+VS Code 进程时间轴：
+[启动中] ─────────────────────────────────────────────────────►
+         [Extension Host 就绪] [panel.reveal()] [OOPIF 进程创建] [Webview ready]
+
+Playwright 重试连接时机：
+         ↑ CDP 端口开放，立刻连上
+         Target.setAutoAttach 下达
+                                        ↓ attachedToTarget 事件
+                                        Playwright 获得 frame 引用 ✓
+
+固定 sleep 5s 的问题：
+                                                        ↑ 5s 后才连 CDP
+                                                        Target.setAutoAttach 下达
+                                        OOPIF 已独立运行，setAutoAttach
+                                        对已有 OOPIF 发现不可靠 ✗
+```
+
+---
+
+## 四、开发过程中解决的 5 个问题
 
 ### 问题 1：`suite is not defined`
 

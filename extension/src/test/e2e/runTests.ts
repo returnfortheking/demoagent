@@ -2,12 +2,23 @@ import * as path from 'path';
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as http from 'http';
+import * as net from 'net';
 import * as os from 'os';
 import { runTests } from '@vscode/test-electron';
 import { runWebviewTests } from './webview.playwright';
 
-const BACKEND_PORT = 8001;
 const CDP_PORT = 9222;
+
+function getFreePort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+        const srv = net.createServer();
+        srv.listen(0, '127.0.0.1', () => {
+            const addr = srv.address() as net.AddressInfo;
+            srv.close(() => resolve(addr.port));
+        });
+        srv.on('error', reject);
+    });
+}
 
 function waitForHealth(url: string, maxAttempts = 30): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -41,6 +52,7 @@ async function main(): Promise<void> {
     const extensionDevelopmentPath = path.resolve(__dirname, '../../..');
     const backendDir = path.resolve(__dirname, '../../../../backend');
 
+    const BACKEND_PORT = await getFreePort();
     const python = process.env.PYTHON_PATH ?? 'python';
     console.log(`[E2E] Starting backend (port ${BACKEND_PORT}) via ${python} ...`);
 

@@ -1,8 +1,8 @@
 """API contract tests for /chat and /chat/stream endpoints (F21).
 
 Tests make real LLM calls with a real FastAPI server managed by a pytest
-fixture (subprocess.Popen + health check).  The fixture is shared with
-test_e2e_v01 but runs on port 8003 to avoid conflicts.
+fixture (subprocess.Popen + health check).  The fixture auto-selects a free
+port to avoid conflicts with Windows reserved port ranges.
 
 Run with:
   pytest tests/integration/test_api_contract.py -v -m integration
@@ -10,6 +10,7 @@ Run with:
 
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -17,13 +18,21 @@ import time
 import httpx
 import pytest
 
-BASE_URL = "http://localhost:8003"
 BACKEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..")
+
+
+def _get_free_port() -> int:
+    """Return an available TCP port chosen by the OS."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
 
 
 @pytest.fixture(scope="module")
 def api_server_contract():
-    """Start FastAPI server on port 8003, yield, then terminate."""
+    """Start FastAPI server on a free port, yield base_url, then terminate."""
+    port = _get_free_port()
+    base_url = f"http://127.0.0.1:{port}"
     proc = subprocess.Popen(
         [
             sys.executable,
@@ -31,7 +40,7 @@ def api_server_contract():
             "uvicorn",
             "src.api.main:app",
             "--port",
-            "8003",
+            str(port),
             "--host",
             "127.0.0.1",
         ],
@@ -41,7 +50,7 @@ def api_server_contract():
     )
     for _ in range(30):
         try:
-            r = httpx.get(f"{BASE_URL}/health", timeout=2)
+            r = httpx.get(f"{base_url}/health", timeout=2)
             if r.status_code == 200:
                 break
         except Exception:
@@ -51,7 +60,7 @@ def api_server_contract():
         proc.terminate()
         pytest.fail("FastAPI server failed to start within 30 seconds")
 
-    yield proc
+    yield base_url
 
     proc.terminate()
     proc.wait(timeout=10)
@@ -65,7 +74,7 @@ def api_server_contract():
 @pytest.mark.integration
 def test_contract_health(api_server_contract):
     """GET /health → 200, body == {"status": "ok"}"""
-    r = httpx.get(f"{BASE_URL}/health")
+    r = httpx.get(f"{api_server_contract}/health")
     assert r.status_code == 200
     assert r.json() == {"status": "ok"}
 
@@ -79,7 +88,7 @@ def test_contract_health(api_server_contract):
 def test_contract_action_response_fields(api_server_contract):
     """action 意图响应字段类型和状态码。"""
     r = httpx.post(
-        f"{BASE_URL}/chat",
+        f"{api_server_contract}/chat",
         json={"message": "帮我编译项目", "thread_id": "contract-test"},
         timeout=30,
     )
@@ -96,7 +105,7 @@ def test_contract_action_response_fields(api_server_contract):
 def test_contract_answer_response_fields(api_server_contract):
     """answer 意图响应字段类型和状态码。"""
     r = httpx.post(
-        f"{BASE_URL}/chat",
+        f"{api_server_contract}/chat",
         json={"message": "如何查看栈分析结果？", "thread_id": "contract-test"},
         timeout=30,
     )
@@ -110,14 +119,14 @@ def test_contract_answer_response_fields(api_server_contract):
 @pytest.mark.integration
 def test_contract_missing_message_returns_422(api_server_contract):
     """缺少 message 字段 → HTTP 422"""
-    r = httpx.post(f"{BASE_URL}/chat", json={"thread_id": "contract-test"}, timeout=10)
+    r = httpx.post(f"{api_server_contract}/chat", json={"thread_id": "contract-test"}, timeout=10)
     assert r.status_code == 422
 
 
 @pytest.mark.integration
 def test_contract_missing_thread_id_returns_422(api_server_contract):
     """缺少 thread_id 字段 → HTTP 422"""
-    r = httpx.post(f"{BASE_URL}/chat", json={"message": "test"}, timeout=10)
+    r = httpx.post(f"{api_server_contract}/chat", json={"message": "test"}, timeout=10)
     assert r.status_code == 422
 
 
@@ -131,7 +140,7 @@ def test_contract_stream_content_type(api_server_contract):
     """Content-Type header 必须包含 text/event-stream"""
     with httpx.stream(
         "POST",
-        f"{BASE_URL}/chat/stream",
+        f"{api_server_contract}/chat/stream",
         json={"message": "帮我编译项目", "thread_id": "contract-stream"},
         timeout=30,
     ) as r:
@@ -146,7 +155,7 @@ def test_contract_stream_delta_contains_thread_id(api_server_contract):
     lines = []
     with httpx.stream(
         "POST",
-        f"{BASE_URL}/chat/stream",
+        f"{api_server_contract}/chat/stream",
         json={"message": "HiSpark支持哪些芯片？", "thread_id": thread_id},
         timeout=60,
     ) as r:
@@ -171,7 +180,7 @@ def test_contract_stream_ends_with_done(api_server_contract):
     lines = []
     with httpx.stream(
         "POST",
-        f"{BASE_URL}/chat/stream",
+        f"{api_server_contract}/chat/stream",
         json={"message": "编译项目", "thread_id": "contract-stream-done"},
         timeout=60,
     ) as r:

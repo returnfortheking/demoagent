@@ -1,12 +1,14 @@
 """E2E streaming integration tests for POST /chat/stream (F20).
 
-Starts a real FastAPI server on port 8002 and makes real LLM + embedding calls.
+Starts a real FastAPI server on a free port (auto-selected to avoid Windows
+reserved port ranges) and makes real LLM + embedding calls.
 Run standalone with:
   pytest tests/e2e/test_e2e_v02_stream.py -v -m integration
 """
 
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -14,13 +16,21 @@ import time
 import httpx
 import pytest
 
-BASE_URL = "http://localhost:8002"
 BACKEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "backend")
+
+
+def _get_free_port() -> int:
+    """Return an available TCP port chosen by the OS."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
 
 
 @pytest.fixture(scope="module")
 def api_server_v02():
-    """Start FastAPI server on port 8002, yield, then terminate."""
+    """Start FastAPI server on a free port, yield base_url, then terminate."""
+    port = _get_free_port()
+    base_url = f"http://127.0.0.1:{port}"
     proc = subprocess.Popen(
         [
             sys.executable,
@@ -28,7 +38,7 @@ def api_server_v02():
             "uvicorn",
             "src.api.main:app",
             "--port",
-            "8002",
+            str(port),
             "--host",
             "127.0.0.1",
         ],
@@ -38,7 +48,7 @@ def api_server_v02():
     )
     for _ in range(30):
         try:
-            r = httpx.get(f"{BASE_URL}/health", timeout=2)
+            r = httpx.get(f"{base_url}/health", timeout=2)
             if r.status_code == 200:
                 break
         except Exception:
@@ -48,7 +58,7 @@ def api_server_v02():
         proc.terminate()
         pytest.fail("FastAPI server failed to start within 30 seconds")
 
-    yield proc
+    yield base_url
 
     proc.terminate()
     proc.wait(timeout=10)
@@ -73,8 +83,9 @@ def _collect_sse_lines(url: str, payload: dict) -> list[str]:
 @pytest.mark.integration
 def test_stream_knowledge_qa(api_server_v02):
     """知识问答流: status=200, Content-Type=text/event-stream, ≥1 delta事件, 最后为 [DONE]"""
+    base_url = api_server_v02
     lines = _collect_sse_lines(
-        f"{BASE_URL}/chat/stream",
+        f"{base_url}/chat/stream",
         {"message": "HiSpark Studio支持哪些芯片型号？", "thread_id": "e2e-stream-v02-qa"},
     )
 
@@ -98,8 +109,9 @@ def test_stream_knowledge_qa(api_server_v02):
 @pytest.mark.integration
 def test_stream_action_intent(api_server_v02):
     """action意图流: 一条 type=action 事件, command 以 hispark-studio. 开头, 最后为 [DONE]"""
+    base_url = api_server_v02
     lines = _collect_sse_lines(
-        f"{BASE_URL}/chat/stream",
+        f"{base_url}/chat/stream",
         {"message": "帮我编译项目", "thread_id": "e2e-stream-v02-action"},
     )
 

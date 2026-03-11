@@ -414,7 +414,9 @@ cd backend && pytest tests/integration/test_api_contract.py -v
 
 > 目标: 全链路可观测，评估框架自动化，服务容器化
 
-> **已知遗留 bug（v0.3 开发时修复）：** `stream-bubble` id 未清理导致多次流式请求内容污染，详见 `docs/changelogs/v0.2-retrospective.md` 第九节。
+> **已知遗留问题（v0.3 开发时修复）：**
+> - BUG-01: `stream-bubble` id 未清理导致多次流式请求内容污染，详见 `docs/changelogs/v0.2-retrospective.md` 第九节。
+> - ISSUE-01: E2E 流式回答断言仅验证长度（> 20 字符），内容质量（RAG 召回准确性）暂无覆盖，待 F23/F24 LangSmith + LLM-as-a-Judge 接入后替换。详见 `docs/issues/ISSUE-01-e2e-content-assertion-gap.md`。
 
 ### F23 — LangSmith 链路追踪
 

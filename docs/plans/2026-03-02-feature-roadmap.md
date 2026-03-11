@@ -414,6 +414,8 @@ cd backend && pytest tests/integration/test_api_contract.py -v
 
 > 目标: 全链路可观测，评估框架自动化，服务容器化
 
+> **已知遗留 bug（v0.3 开发时修复）：** `stream-bubble` id 未清理导致多次流式请求内容污染，详见 `docs/changelogs/v0.2-retrospective.md` 第九节。
+
 ### F23 — LangSmith 链路追踪
 
 **commit:** `feat(F23): add LangSmith tracing with @traceable decorator`

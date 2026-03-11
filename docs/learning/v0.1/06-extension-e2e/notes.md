@@ -223,8 +223,8 @@ VS Code Electron 进程
 
 **结论：决定成败的是连接时机，不是 frame 访问方式。**
 
-- **早连接（重试）**：CDP 会话在 OOPIF 初始化过程中建立，能"跟随"它，frame 始终可见
-- **晚连接（5s sleep）**：OOPIF 已完全独立运行，新建 CDP 会话看不到它
+- **早连接（重试）**：`Target.setAutoAttach` 在 Webview OOPIF 创建之前下达 → 捕获 `attachedToTarget` 事件 → frame 可见
+- **晚连接（5s sleep）**：`Target.setAutoAttach` 在 OOPIF 已独立运行后下达 → 对已运行 OOPIF 的发现能力不可靠 → frame 不可见
 
 ### 重试连接实现
 
@@ -249,7 +249,7 @@ CDP 端口一开放就立刻连上，比固定 sleep 更早建立会话。
 ### 固定 sleep 的两个问题
 
 1. **太短**：CDP 端口还没开，ECONNREFUSED
-2. **太长**：OOPIF 已完全初始化隔离，frame 不可见
+2. **太长**：OOPIF 已独立运行，`Target.setAutoAttach` 无法可靠发现已有 OOPIF target，frame 不可见
 
 ### frameLocator vs page.frames()
 
@@ -401,7 +401,7 @@ Playwright 用例执行完毕                          │
 
 ### "Playwright 测 webview 遇到了什么难点？"
 
-> "VS Code webview 是 OOPIF，运行在独立进程里，直接连 CDP 有时看不到 iframe。我做了控制变量实验，发现决定成败的不是用 frameLocator 还是 page.frames()，而是 CDP 会话建立的时机。连接必须在 OOPIF 初始化完成前建立才能跟随它，否则 frame 不可见。解法是用重试连接替代固定 sleep，CDP 端口一开放立刻连上，保证早连接。这个实验同时纠正了外部工具对根因的错误解释。"
+> "VS Code webview 是 OOPIF，运行在独立进程里。Playwright 用 Target.setAutoAttach 追踪 OOPIF frame，这个命令对尚未创建的 target 是可靠的，但对已经独立运行的 OOPIF 发现能力不可靠。我做了控制变量实验，发现决定成败的不是 frameLocator 还是 page.frames()，而是连接时机——必须在 Webview 创建之前发出 setAutoAttach，才能通过事件捕获 frame 引用。解法是重试连接替代固定 sleep，CDP 端口一开放立刻连上。这个实验同时纠正了外部工具对根因的错误解释。"
 
 ### "测试里的进程管理怎么做的？"
 

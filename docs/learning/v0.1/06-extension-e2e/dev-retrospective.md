@@ -230,14 +230,20 @@ Phase 2: locator.fill: Timeout 15000ms exceeded
 
 **真正的根因**：
 
+Playwright 在 `connectOverCDP` 之后会向浏览器发送 `Target.setAutoAttach` 命令，这是它追踪 OOPIF frame 的核心机制。该命令有两个作用：
+1. 监听后续新创建的 target，创建时自动 attach（通过 `attachedToTarget` 事件）
+2. 尝试 attach 到当前已有的"相关 target"
+
+关键限制（来自 CDP 官方文档）：`Target.setAutoAttach` 对**尚未创建**的 target 是可靠的，但对**已经以独立进程形式运行**的 OOPIF target，"现有相关 target"的发现机制不可靠。
+
 ```
 固定 5s sleep
     ↓
-Playwright 在 VS Code 完全启动后才连接 CDP
+VS Code 完全启动，Webview OOPIF 已作为独立渲染进程运行
     ↓
-此时 OOPIF 进程已经完全独立运行
+Playwright 此时才连接 CDP，发送 Target.setAutoAttach
     ↓
-新建立的 CDP 会话无法感知到已隔离的 OOPIF frame
+setAutoAttach 对已独立运行的 OOPIF 发现能力不可靠
     ↓
 page.frames() 看不到 active-frame，frameLocator 也进不去
     ↓
@@ -247,26 +253,29 @@ page.frames() 看不到 active-frame，frameLocator 也进不去
 ```
 重试连接（每 500ms 尝试一次）
     ↓
-CDP 端口一开放就立刻连上（VS Code 还在启动过程中）
+CDP 端口一开放就立刻连上（VS Code 还在启动过程中，Webview 尚未创建）
     ↓
-CDP 会话"跟随"OOPIF 的初始化过程，frame 对其可见
+Playwright 发送 Target.setAutoAttach
     ↓
-即使 webview 最终到达 ready 状态，CDP 会话已持有 frame 引用
+Webview OOPIF 随后创建，触发 attachedToTarget 事件
+    ↓
+Playwright 捕获事件，获得 frame 引用
     ↓
 page.frames() 和 frameLocator 均可操作
 ```
 
-> **知识点：OOPIF (Out-Of-Process IFrame) 与 CDP 会话时机**
+> **知识点：OOPIF (Out-Of-Process IFrame) 与 Target.setAutoAttach 时机**
 > - Chromium 安全架构：不同源的 iframe 运行在独立的渲染进程中
 > - VS Code webview 是 OOPIF：`vscode-webview://` 协议 ≠ 主窗口的 `vscode-file://` 协议
-> - **关键**：CDP 会话建立的时机决定了对 OOPIF frame 的可见性
->   - 早连接（OOPIF 初始化前）→ 会话跟随 frame 创建过程 → 保持可见
->   - 晚连接（OOPIF 已完全独立）→ 会话错过 frame 挂载窗口 → 不可见
-> - 这与 frameLocator / page.frames() 的选择无关——两者都依赖 CDP 会话对 frame 的可见性
+> - Playwright 用 `Target.setAutoAttach` 追踪 OOPIF frame，而非直接扫描 frame 树
+> - **关键**：`setAutoAttach` 对"还没创建的 target"可靠（事件驱动），对"已独立运行的 OOPIF"不可靠
+>   - 早连接 → setAutoAttach 在 Webview 创建前下达 → 捕获 attachedToTarget 事件 → frame 可见 ✓
+>   - 晚连接 → setAutoAttach 在 Webview 已独立运行后下达 → 发现机制不可靠 → frame 不可见 ✗
+> - 这与 frameLocator / page.frames() 的选择无关——两者都依赖 setAutoAttach 是否成功 attach
 
 > **知识点：固定 sleep vs 重试循环**
-> - 固定 sleep 有两个问题：（1）可能太短导致 ECONNREFUSED；（2）可能太长导致错过 OOPIF 挂载窗口
-> - 重试循环：CDP 端口一开放即连接，尽早建立会话，与 OOPIF 初始化同步
+> - 固定 sleep 的问题：太短导致 ECONNREFUSED；太长导致错过 Webview 创建时机
+> - 重试循环：CDP 端口一开放即连接，在 Webview 创建之前下达 setAutoAttach，确保捕获创建事件
 > - 通用原则：等待外部进程就绪应该用轮询（poll），不应该用固定 sleep
 
 ---
